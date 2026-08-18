@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { HiCalendarDays, HiClipboardDocumentCheck, HiCog6Tooth, HiDocumentText, HiHome, HiMiniArrowRightOnRectangle, HiUserCircle, HiXMark, HiBars3, HiChevronLeft, HiChevronRight } from 'react-icons/hi2';
+import { HiCalendarDays, HiClipboardDocumentCheck, HiCog6Tooth, HiDocumentText, HiHome, HiMiniArrowRightOnRectangle, HiUserCircle, HiXMark, HiBars3, HiChevronLeft, HiChevronRight, HiArrowPath } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext'; 
 import { useState } from 'react';
 
 const links = [
   ['/', 'Dashboard', HiHome],
   ['/tasks', 'My Tasks', HiClipboardDocumentCheck],
+  ['/permanent', 'Permanent Tasks', HiArrowPath],
   ['/calendar', 'Calendar', HiCalendarDays],
   ['/notes', 'Notes', HiDocumentText],
   ['/profile', 'Profile', HiUserCircle],

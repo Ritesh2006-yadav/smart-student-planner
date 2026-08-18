@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { HiPlus } from 'react-icons/hi2';
 import { useTasks } from '../context/TaskContext';
 import { useAuth } from '../context/AuthContext';
+import { usePermanentTasks } from '../context/PermanentTaskContext';
 import TaskItem from '../components/TaskItem';
 import Modal from '../components/Modal';
 import TaskForm from '../components/TaskForm';
@@ -17,6 +18,7 @@ const getGreetingAndEmoji = () => {
 
 export default function Dashboard() {
   const { tasks, stats, addTask, updateTask, removeTask } = useTasks();
+  const { getPermanentTasksForDate, togglePermanentTaskCompletion, permanentTasks, completions } = usePermanentTasks();
   const { user } = useAuth();
   
   const [show, setShow] = useState(false);
@@ -35,10 +37,14 @@ export default function Dashboard() {
   
   const userName = user?.name || 'Student';
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const sortedUpcomingTasks = useMemo(() => {
     const pending = tasks.filter(t => !t.completed);
-    return pending.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  }, [tasks]);
+    const permPending = getPermanentTasksForDate(today).filter(t => !t.completed);
+    const allPending = [...pending, ...permPending];
+    return allPending.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  }, [tasks, permanentTasks, completions, today]);
 
   return (
     <div className="space-y-7 animate-fade-up">
@@ -79,7 +85,13 @@ export default function Dashboard() {
                     key={task.id} 
                     task={task} 
                     compact 
-                    onToggle={item => updateTask(item.id, { completed: !item.completed })} 
+                    onToggle={item => {
+                      if (item.isPermanent) {
+                        togglePermanentTaskCompletion(item.id, item.dueDate);
+                      } else {
+                        updateTask(item.id, { completed: !item.completed });
+                      }
+                    }} 
                     onEdit={edit} 
                     onDelete={removeTask} 
                   />
