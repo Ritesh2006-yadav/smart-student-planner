@@ -55,13 +55,13 @@ export default function PermanentTasks() {
       ) : (
         <div className="space-y-3">
           {permanentTasks.map(t => (
-            <div key={t.id} className={`card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 ${t.enabled ? 'border-l-indigo-500' : 'border-l-slate-300 opacity-60'}`}>
-              <div className="flex-1">
+            <div key={t.id} className={`card min-w-0 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 ${t.enabled ? 'border-l-indigo-500' : 'border-l-slate-300 opacity-60'}`}>
+              <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-lg flex items-center gap-2">
                   {t.title}
                   {!t.enabled && <span className="px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 text-xs font-medium">Disabled</span>}
                 </h3>
-                {t.description && <p className="text-sm text-slate-500 mt-1 line-clamp-1">{t.description}</p>}
+                {t.description && <p className="mt-1 break-words text-sm text-slate-500">{t.description}</p>}
                 
                 <div className="flex flex-wrap gap-3 mt-3 text-xs text-slate-500 font-medium">
                   <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
@@ -80,7 +80,7 @@ export default function PermanentTasks() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 self-end shrink-0 sm:self-auto">
                 <button 
                   onClick={() => updatePermanentTask(t.id, { enabled: !t.enabled })}
                   className={`p-2 rounded-lg transition-colors ${t.enabled ? 'text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}

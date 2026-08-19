@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { HiCalendarDays, HiClipboardDocumentCheck, HiCog6Tooth, HiDocumentText, HiHome, HiMiniArrowRightOnRectangle, HiUserCircle, HiXMark, HiBars3, HiChevronLeft, HiChevronRight, HiArrowPath } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext'; 
 import { useState } from 'react';
+import PersistentTimer from './PersistentTimer';
 
 const links = [
   ['/', 'Dashboard', HiHome],
@@ -98,12 +99,16 @@ export default function Layout() {
         </div>
       )}
       <main className={`transition-all duration-300 ${expanded ? 'lg:ml-72' : 'lg:ml-20'}`}>
-        <div className="lg:hidden sticky top-0 z-30 flex h-14 items-center border-b border-slate-200/70 bg-slate-50/80 px-4 backdrop-blur dark:border-slate-700 dark:bg-[#101827]/85">
+        <div className="lg:hidden sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200/70 bg-slate-50/80 px-4 backdrop-blur dark:border-slate-700 dark:bg-[#101827]/85">
           <button onClick={() => setOpen(true)} className="p-2 text-slate-600 dark:text-slate-300">
             <HiBars3 className="text-2xl" />
           </button>
+          <PersistentTimer />
         </div>
-        <div className="mx-auto max-w-7xl p-5 sm:p-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-end px-5 pt-4 sm:px-8 sm:pt-6">
+          <PersistentTimer />
+        </div>
+        <div className="mx-auto max-w-7xl p-5 pt-3 sm:p-8 sm:pt-3">
           <Outlet />
         </div>
       </main>

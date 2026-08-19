@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { localDateString, parseLocalDate } from '../utils/date';
 
 const PermanentTaskContext = createContext();
 
@@ -56,7 +57,7 @@ export const PermanentTaskProvider = ({ children }) => {
 
   // Helper to generate instances for a specific date
   const getPermanentTasksForDate = (dateString) => {
-    const targetDate = new Date(dateString);
+    const targetDate = parseLocalDate(dateString);
     const dayOfWeek = targetDate.getDay(); // 0 (Sun) to 6 (Sat)
     const dayOfMonth = targetDate.getDate();
 
@@ -69,13 +70,13 @@ export const PermanentTaskProvider = ({ children }) => {
       if (!task.enabled) return;
 
       if (task.startDate) {
-        const start = new Date(task.startDate);
+        const start = parseLocalDate(task.startDate);
         start.setHours(0, 0, 0, 0);
         if (targetDate < start) return;
       }
 
       if (task.endDate) {
-        const end = new Date(task.endDate);
+        const end = parseLocalDate(task.endDate);
         end.setHours(0, 0, 0, 0);
         if (targetDate > end) return;
       }
@@ -85,10 +86,10 @@ export const PermanentTaskProvider = ({ children }) => {
       if (task.repeatFrequency === 'daily') {
         matches = true;
       } else if (task.repeatFrequency === 'weekly') {
-        const start = new Date(task.startDate || new Date());
+        const start = task.startDate ? parseLocalDate(task.startDate) : new Date();
         matches = start.getDay() === dayOfWeek;
       } else if (task.repeatFrequency === 'monthly') {
-        const start = new Date(task.startDate || new Date());
+        const start = task.startDate ? parseLocalDate(task.startDate) : new Date();
         matches = start.getDate() === dayOfMonth;
       } else if (task.repeatFrequency === 'custom' && task.customDays) {
         matches = task.customDays.includes(dayOfWeek);
@@ -102,6 +103,9 @@ export const PermanentTaskProvider = ({ children }) => {
           ...task,
           dueDate: dateString, // Set the due date to the target date
           completed: isCompleted,
+          // This is intentionally derived rather than stored: a task only becomes
+          // missed once its own scheduled day has ended, and stays tied to that day.
+          isMissed: !isCompleted && dateString < localDateString(),
           isPermanent: true, // Flag to identify it's a generated task
         });
       }

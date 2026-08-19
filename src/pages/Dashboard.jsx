@@ -7,6 +7,8 @@ import TaskItem from '../components/TaskItem';
 import Modal from '../components/Modal';
 import TaskForm from '../components/TaskForm';
 import TaskHeatmap from '../components/TaskHeatmap';
+import FocusCard from '../components/FocusCard';
+import { localDateString } from '../utils/date';
 
 const getGreetingAndEmoji = () => {
   const hour = new Date().getHours();
@@ -37,7 +39,7 @@ export default function Dashboard() {
   
   const userName = user?.name || 'Student';
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateString();
 
   const sortedUpcomingTasks = useMemo(() => {
     const pending = tasks.filter(t => !t.completed);
@@ -115,52 +117,4 @@ export default function Dashboard() {
       )}
     </div>
   );
-}
-
-function FocusCard() { 
-  const [seconds, setSeconds] = useState(25 * 60);
-  const [running, setRunning] = useState(false); 
-  
-  const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const secs = String(seconds % 60).padStart(2, '0'); 
-  
-  useEffect(() => { 
-    if (!running) return; 
-    const id = setInterval(() => setSeconds(s => s > 0 ? s - 1 : 25 * 60), 1000); 
-    return () => clearInterval(id); 
-  }, [running]); 
-  
-  return (
-    <section className="overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-4 text-white shadow-soft shrink-0">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-200">FOCUS SESSION</p>
-          <h2 className="text-lg font-bold">Pomodoro timer</h2>
-        </div>
-      </div>
-      
-      <div className="my-4 text-center text-5xl font-bold tracking-tight">
-        {mins}:{secs}
-      </div>
-      
-      <div className="flex gap-2">
-        <button 
-          onClick={() => setRunning(!running)} 
-          className="btn flex-1 bg-white px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50"
-        >
-          {running ? 'Pause' : 'Start focus'}
-        </button>
-        <button 
-          onClick={() => { setSeconds(25 * 60); setRunning(false); }} 
-          className="btn border border-white/30 px-3 py-2 text-sm hover:bg-white/10"
-        >
-          Reset
-        </button>
-      </div>
-      
-      <p className="mt-3 text-center text-[11px] text-indigo-200">
-        25 minutes of uninterrupted progress
-      </p>
-    </section>
-  ); 
 }

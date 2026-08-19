@@ -50,7 +50,7 @@ export default function PermanentTaskForm({ task, onSave, onClose }) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4 pb-1">
       <div>
         <label className="label">Task title</label>
         <input
@@ -160,7 +160,7 @@ export default function PermanentTaskForm({ task, onSave, onClose }) {
           />
         </div>
       </div>
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex flex-col-reverse justify-end gap-3 pt-2 sm:flex-row">
         <button type="button" className="btn-secondary" onClick={onClose}>
           Cancel
         </button>
