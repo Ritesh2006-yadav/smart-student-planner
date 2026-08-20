@@ -48,6 +48,9 @@ export const TaskProvider = ({ children }) => {
   const updateTask = (id, changes) => setTasks(x => expirePastTasks(x.map((task) => {
     if (task.id !== id) return task;
     const updated = { ...task, ...changes };
+    if (changes.status === 'incomplete') {
+      return { ...updated, status: 'incomplete', incompleteAt: Date.now() };
+    }
     return {
       ...updated,
       // Rescheduling an incomplete task to today or a future date reopens it.

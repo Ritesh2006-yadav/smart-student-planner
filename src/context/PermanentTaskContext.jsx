@@ -14,6 +14,12 @@ export const PermanentTaskProvider = ({ children }) => {
     return JSON.parse(localStorage.getItem('ssp-permanent-completions')) || [];
   });
 
+  // Explicit "not completed" choices are kept separately from automatic
+  // missed-day detection, so they remain attached to the selected occurrence.
+  const [incompletions, setIncompletions] = useState(() => {
+    return JSON.parse(localStorage.getItem('ssp-permanent-incompletions')) || [];
+  });
+
   useEffect(() => {
     localStorage.setItem('ssp-permanent-tasks', JSON.stringify(permanentTasks));
   }, [permanentTasks]);
@@ -21,6 +27,10 @@ export const PermanentTaskProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('ssp-permanent-completions', JSON.stringify(completions));
   }, [completions]);
+
+  useEffect(() => {
+    localStorage.setItem('ssp-permanent-incompletions', JSON.stringify(incompletions));
+  }, [incompletions]);
 
   const addPermanentTask = (task) => {
     setPermanentTasks((prev) => [
@@ -42,17 +52,24 @@ export const PermanentTaskProvider = ({ children }) => {
     setPermanentTasks((prev) => prev.filter((t) => t.id !== id));
     // Optionally clean up completions
     setCompletions((prev) => prev.filter((c) => c.taskId !== id));
+    setIncompletions((prev) => prev.filter((item) => item.taskId !== id));
   };
 
   const togglePermanentTaskCompletion = (taskId, date) => {
-    setCompletions((prev) => {
-      const exists = prev.find((c) => c.taskId === taskId && c.date === date);
-      if (exists) {
-        return prev.filter((c) => !(c.taskId === taskId && c.date === date));
-      } else {
-        return [...prev, { taskId, date }];
-      }
-    });
+    const exists = completions.some((item) => item.taskId === taskId && item.date === date);
+    setCompletions((prev) => exists
+      ? prev.filter((item) => !(item.taskId === taskId && item.date === date))
+      : [...prev, { taskId, date }]);
+    if (!exists) {
+      setIncompletions((items) => items.filter((item) => !(item.taskId === taskId && item.date === date)));
+    }
+  };
+
+  const markPermanentTaskIncomplete = (taskId, date) => {
+    setCompletions((prev) => prev.filter((item) => !(item.taskId === taskId && item.date === date)));
+    setIncompletions((prev) => prev.some((item) => item.taskId === taskId && item.date === date)
+      ? prev
+      : [...prev, { taskId, date }]);
   };
 
   // Helper to generate instances for a specific date
@@ -99,13 +116,17 @@ export const PermanentTaskProvider = ({ children }) => {
         const isCompleted = completions.some(
           (c) => c.taskId === task.id && c.date === dateString
         );
+        const isExplicitlyIncomplete = incompletions.some(
+          (item) => item.taskId === task.id && item.date === dateString
+        );
         instances.push({
           ...task,
           dueDate: dateString, // Set the due date to the target date
           completed: isCompleted,
           // This is intentionally derived rather than stored: a task only becomes
           // missed once its own scheduled day has ended, and stays tied to that day.
-          isMissed: !isCompleted && dateString < localDateString(),
+          isMissed: !isCompleted && (isExplicitlyIncomplete || dateString < localDateString()),
+          status: !isCompleted && (isExplicitlyIncomplete || dateString < localDateString()) ? 'incomplete' : 'active',
           isPermanent: true, // Flag to identify it's a generated task
         });
       }
@@ -119,10 +140,12 @@ export const PermanentTaskProvider = ({ children }) => {
       value={{
         permanentTasks,
         completions,
+        incompletions,
         addPermanentTask,
         updatePermanentTask,
         removePermanentTask,
         togglePermanentTaskCompletion,
+        markPermanentTaskIncomplete,
         getPermanentTasksForDate,
       }}
     >

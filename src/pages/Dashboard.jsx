@@ -20,7 +20,7 @@ const getGreetingAndEmoji = () => {
 
 export default function Dashboard() {
   const { tasks, stats, addTask, updateTask, removeTask } = useTasks();
-  const { getPermanentTasksForDate, togglePermanentTaskCompletion, permanentTasks, completions } = usePermanentTasks();
+  const { getPermanentTasksForDate, togglePermanentTaskCompletion, markPermanentTaskIncomplete, permanentTasks, completions, incompletions } = usePermanentTasks();
   const { user } = useAuth();
   
   const [show, setShow] = useState(false);
@@ -46,7 +46,7 @@ export default function Dashboard() {
     const permPending = getPermanentTasksForDate(today).filter(t => !t.completed);
     const allPending = [...pending, ...permPending];
     return allPending.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  }, [tasks, permanentTasks, completions, today]);
+  }, [tasks, permanentTasks, completions, incompletions, today]);
 
   return (
     <div className="space-y-7 animate-fade-up">
@@ -94,6 +94,13 @@ export default function Dashboard() {
                         updateTask(item.id, { completed: !item.completed });
                       }
                     }} 
+                    onMarkIncomplete={item => {
+                      if (item.isPermanent) {
+                        markPermanentTaskIncomplete(item.id, item.dueDate);
+                      } else {
+                        updateTask(item.id, { completed: false, status: 'incomplete' });
+                      }
+                    }}
                     onEdit={edit} 
                     onDelete={removeTask} 
                   />
