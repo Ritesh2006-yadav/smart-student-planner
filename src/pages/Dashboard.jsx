@@ -42,7 +42,7 @@ export default function Dashboard() {
   const today = localDateString();
 
   const sortedUpcomingTasks = useMemo(() => {
-    const pending = tasks.filter(t => !t.completed);
+    const pending = tasks.filter(t => !t.completed && t.status !== 'incomplete' && t.dueDate === today);
     const permPending = getPermanentTasksForDate(today).filter(t => !t.completed);
     const allPending = [...pending, ...permPending];
     return allPending.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -76,7 +76,7 @@ export default function Dashboard() {
                 <p className="text-sm text-slate-500">Stay on top of your priorities</p>
               </div>
               <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600 dark:bg-indigo-500/15">
-                {stats.pending} open
+                {stats.dueToday} open
               </span>
             </div>
             

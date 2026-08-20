@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { HiCheckCircle, HiClock, HiXMark } from 'react-icons/hi2';
 import { useTasks } from '../context/TaskContext';
+import { localDateString } from '../utils/date';
 
-const dayKey = (date) => date.toISOString().slice(0, 10);
+const dayKey = (date) => localDateString(date);
 const prettyDate = (key) => new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 
 function calculateStreak(tasks) {
@@ -37,7 +38,9 @@ export default function TaskHeatmap() {
       return map;
     }, {});
     
-    const total = tasks.length, completed = tasks.filter(t => t.completed).length;
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.completed).length;
+    const incomplete = tasks.filter(t => t.status === 'incomplete').length;
     
     let min = new Date();
     let max = new Date();
@@ -64,7 +67,7 @@ export default function TaskHeatmap() {
     
     return { 
       byDay: grouped, 
-      summary: { total, completed, pending: total - completed, rate: total ? Math.round((completed / total) * 100) : 0 }, 
+      summary: { total, completed, incomplete, pending: total - completed - incomplete, rate: total ? Math.round((completed / total) * 100) : 0 },
       streaks: calculateStreak(tasks),
       minMaxDates: { min, max }
     };
@@ -73,7 +76,10 @@ export default function TaskHeatmap() {
   const selectedTasks = selectedDay ? (byDay[selectedDay] || []) : [];
   
   const intensity = (key) => {
-    const amount = (byDay[key] || []).filter(t => t.completed).length;
+    const dayTasks = byDay[key] || [];
+    const amount = dayTasks.filter(t => t.completed).length;
+    const incomplete = dayTasks.filter(t => t.status === 'incomplete').length;
+    if (incomplete && !amount) return 'bg-rose-200 dark:bg-rose-900/60';
     if (!amount) return 'bg-slate-100 dark:bg-slate-800';
     if (amount === 1) return 'bg-emerald-200 dark:bg-emerald-900/60';
     if (amount >= 2 && amount <= 3) return 'bg-emerald-400 dark:bg-emerald-700/80';
@@ -120,6 +126,7 @@ export default function TaskHeatmap() {
         <Summary label="Total tasks" value={summary.total} />
         <Summary label="Completed" value={summary.completed} color="text-emerald-600" />
         <Summary label="Pending" value={summary.pending} color="text-amber-600" />
+        <Summary label="Incomplete" value={summary.incomplete} color="text-rose-600" />
         <Summary label="Completion" value={`${summary.rate}%`} color="text-indigo-600" />
         <Summary label="Current streak" value={`${streaks.current} d`} />
         <Summary label="Best streak" value={`${streaks.longest} d`} />
@@ -164,7 +171,8 @@ export default function TaskHeatmap() {
               const key = dayKey(date);
               const dayTasks = byDay[key] || [];
               const completed = dayTasks.filter(t => t.completed).length;
-              const pending = dayTasks.length - completed;
+              const incomplete = dayTasks.filter(t => t.status === 'incomplete').length;
+              const pending = dayTasks.length - completed - incomplete;
               const isToday = key === dayKey(new Date());
               
               return (
@@ -179,6 +187,7 @@ export default function TaskHeatmap() {
                     <span className="mt-2 block text-slate-300">Total Tasks: {dayTasks.length}</span>
                     <span className="block text-emerald-300">Completed: {completed}</span>
                     <span className="block text-amber-300">Pending: {pending}</span>
+                    <span className="block text-rose-300">Incomplete: {incomplete}</span>
                     <span className="block text-indigo-300">Completion: {dayTasks.length ? Math.round((completed / dayTasks.length) * 100) : 0}%</span>
                   </span>
                 </button>
@@ -223,15 +232,15 @@ export default function TaskHeatmap() {
             {selectedTasks.length ? (
               <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
                 {selectedTasks.map(task => (
-                  <div key={task.id} className={`flex items-start gap-3 rounded-xl p-3 ${task.completed ? 'bg-emerald-50 dark:bg-emerald-500/10' : 'bg-amber-50 dark:bg-amber-500/10'}`}>
+                  <div key={task.id} className={`flex items-start gap-3 rounded-xl p-3 ${task.completed ? 'bg-emerald-50 dark:bg-emerald-500/10' : task.status === 'incomplete' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-amber-50 dark:bg-amber-500/10'}`}>
                     <div className="pt-0.5">
-                      {task.completed ? <HiCheckCircle className="shrink-0 text-xl text-emerald-600" /> : <HiClock className="shrink-0 text-xl text-amber-600" />}
+                      {task.completed ? <HiCheckCircle className="shrink-0 text-xl text-emerald-600" /> : task.status === 'incomplete' ? <HiXMark className="shrink-0 text-xl text-rose-600" /> : <HiClock className="shrink-0 text-xl text-amber-600" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold">{task.title}</p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px]">
-                        <span className={`font-semibold uppercase tracking-wider ${task.completed ? 'text-emerald-600' : 'text-amber-600'}`}>
-                          {task.completed ? 'Completed' : 'Pending'}
+                        <span className={`font-semibold uppercase tracking-wider ${task.completed ? 'text-emerald-600' : task.status === 'incomplete' ? 'text-rose-600' : 'text-amber-600'}`}>
+                          {task.completed ? 'Completed' : task.status === 'incomplete' ? 'Incomplete' : 'Pending'}
                         </span>
                         {task.dueTime && (
                           <span className="rounded bg-black/5 dark:bg-white/10 px-1.5 py-0.5 font-medium text-slate-600 dark:text-slate-300">
