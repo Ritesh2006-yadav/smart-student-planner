@@ -98,17 +98,17 @@ export default function Layout() {
           </div>
         </div>
       )}
-      <main className={`transition-all duration-300 ${expanded ? 'lg:ml-72' : 'lg:ml-20'}`}>
-        <div className="lg:hidden sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200/70 bg-slate-50/80 px-4 backdrop-blur dark:border-slate-700 dark:bg-[#101827]/85">
+      <main className={`transition-all duration-300 ${expanded ? 'lg:ml-72' : 'lg:ml-20'} min-h-screen lg:h-screen lg:overflow-y-auto flex flex-col`}>
+        <div className="lg:hidden sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200/70 bg-slate-50/80 px-4 backdrop-blur dark:border-slate-700 dark:bg-[#101827]/85 shrink-0">
           <button onClick={() => setOpen(true)} className="p-2 text-slate-600 dark:text-slate-300">
             <HiBars3 className="text-2xl" />
           </button>
           <PersistentTimer />
         </div>
-        <div className="mx-auto flex max-w-7xl items-center justify-end px-5 pt-4 sm:px-8 sm:pt-6">
+        <div className="hidden lg:flex mx-auto w-full max-w-7xl items-center justify-end px-5 pt-3 sm:px-8 shrink-0">
           <PersistentTimer />
         </div>
-        <div className="mx-auto max-w-7xl p-5 pt-3 sm:p-8 sm:pt-3">
+        <div className="mx-auto w-full max-w-7xl px-5 pt-2 pb-4 sm:px-8 sm:pt-2 sm:pb-5 flex-1 min-h-0 flex flex-col">
           <Outlet />
         </div>
       </main>

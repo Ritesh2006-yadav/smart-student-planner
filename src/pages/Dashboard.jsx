@@ -49,38 +49,38 @@ export default function Dashboard() {
   }, [tasks, permanentTasks, completions, incompletions, today]);
 
   return (
-    <div className="space-y-7 animate-fade-up">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="flex flex-col lg:h-full justify-between gap-4 lg:gap-5 animate-fade-up">
+      <div className="flex flex-wrap items-end justify-between gap-3 shrink-0">
         <div>
-          <p className="text-sm font-semibold text-indigo-600">YOUR PRODUCTIVITY SPACE</p>
-          <h1 key={timeState.text} className="mt-1 text-3xl font-bold tracking-tight animate-fade-up">
+          <p className="text-xs sm:text-sm font-semibold text-indigo-600">YOUR PRODUCTIVITY SPACE</p>
+          <h1 key={timeState.text} className="mt-0.5 sm:mt-1 text-2xl sm:text-3xl font-bold tracking-tight animate-fade-up">
             {timeState.text}, {userName} {timeState.emoji}
           </h1>
-          <p className="mt-2 text-slate-500 dark:text-slate-400">Here’s a clear view of what needs your attention.</p>
+          <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">Here’s a clear view of what needs your attention.</p>
         </div>
         <button onClick={() => setShow(true)} className="btn-primary">
           <HiPlus className="text-lg" />Add task
         </button>
       </div>
       
-      <div className="grid gap-6 lg:grid-cols-[6fr_4fr] items-start">
-        <div className="min-w-0 w-full h-full">
+      <div className="grid gap-4 lg:gap-5 lg:grid-cols-[1.3fr_1fr] items-stretch flex-1 min-h-0">
+        <div className="min-w-0 w-full h-full flex flex-col">
           <TaskHeatmap />
         </div>
         
-        <div className="flex flex-col gap-6 min-w-0 h-full">
-          <section className="card flex flex-col p-5 sm:p-6 flex-1 min-h-[300px]">
-            <div className="mb-5 flex items-center justify-between shrink-0">
+        <div className="flex flex-col gap-4 lg:gap-5 min-w-0 h-full justify-between">
+          <section className="card flex flex-col p-4 sm:p-5 flex-1 min-h-[160px] lg:min-h-0 overflow-hidden">
+            <div className="mb-3 sm:mb-4 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="font-bold">Upcoming tasks</h2>
-                <p className="text-sm text-slate-500">Stay on top of your priorities</p>
+                <h2 className="text-base sm:text-lg font-bold">Upcoming tasks</h2>
+                <p className="text-xs text-slate-500">Stay on top of your priorities</p>
               </div>
               <span className="rounded-lg bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600 dark:bg-indigo-500/15">
                 {stats.dueToday} open
               </span>
             </div>
             
-            <div className="space-y-2 overflow-y-auto pr-2 flex-1">
+            <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0">
               {sortedUpcomingTasks.length > 0 ? (
                 sortedUpcomingTasks.map(task => (
                   <TaskItem 
@@ -100,7 +100,7 @@ export default function Dashboard() {
                       } else {
                         updateTask(item.id, { completed: false, status: 'incomplete' });
                       }
-                    }}
+                    }} 
                     onEdit={edit} 
                     onDelete={removeTask} 
                   />

@@ -1,27 +1,15 @@
 import { useMemo, useState } from 'react';
 import { HiCheckCircle, HiClock, HiXMark } from 'react-icons/hi2';
 import { useTasks } from '../context/TaskContext';
+import { usePermanentTasks } from '../context/PermanentTaskContext';
 import { localDateString } from '../utils/date';
 
 const dayKey = (date) => localDateString(date);
 const prettyDate = (key) => new Date(`${key}T00:00:00`).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 
-function calculateStreak(tasks) {
-  const completedDays = new Set(tasks.filter(t => t.completed).map(t => t.dueDate));
-  let current = 0, longest = 0, running = 0;
-  const cursor = new Date(); cursor.setHours(0, 0, 0, 0);
-  while (completedDays.has(dayKey(cursor))) { current += 1; cursor.setDate(cursor.getDate() - 1); }
-  const dates = [...completedDays].sort();
-  dates.forEach((key, index) => {
-    if (!index || (new Date(`${key}T00:00:00`) - new Date(`${dates[index - 1]}T00:00:00`)) === 86400000) running += 1;
-    else running = 1;
-    longest = Math.max(longest, running);
-  });
-  return { current, longest };
-}
-
 export default function TaskHeatmap() {
   const { tasks } = useTasks();
+  const { getPermanentTasksForDate } = usePermanentTasks();
   const [selectedDay, setSelectedDay] = useState(null);
   
   const [viewMonth, setViewMonth] = useState(() => {
@@ -31,16 +19,72 @@ export default function TaskHeatmap() {
     return d;
   });
 
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+
+  const daysInMonth = useMemo(() => {
+    const days = [];
+    const date = new Date(year, month, 1);
+    while (date.getMonth() === month) {
+      days.push(new Date(date));
+      date.setDate(date.getDate() + 1);
+    }
+    return days;
+  }, [year, month]);
+
   const { byDay, summary, streaks, minMaxDates } = useMemo(() => {
-    const grouped = tasks.reduce((map, task) => {
-      if (!map[task.dueDate]) map[task.dueDate] = [];
-      map[task.dueDate].push(task);
-      return map;
-    }, {});
+    const grouped = {};
+    const monthTasks = [];
+
+    daysInMonth.forEach(date => {
+      const key = dayKey(date);
+      const regularTasks = tasks.filter(t => t.dueDate === key);
+      const permTasks = getPermanentTasksForDate ? getPermanentTasksForDate(key) : [];
+      const allForDay = [...regularTasks, ...permTasks];
+      grouped[key] = allForDay;
+      monthTasks.push(...allForDay);
+    });
     
-    const total = tasks.length;
-    const completed = tasks.filter(t => t.completed).length;
-    const incomplete = tasks.filter(t => t.status === 'incomplete').length;
+    const total = monthTasks.length;
+    const completed = monthTasks.filter(t => t.completed).length;
+    const incomplete = monthTasks.filter(t => t.status === 'incomplete' || t.isMissed).length;
+    const pending = Math.max(0, total - completed - incomplete);
+    const rate = total ? Math.round((completed / total) * 100) : 0;
+    
+    // Streaks for this month
+    const completedDays = new Set(monthTasks.filter(t => t.completed).map(t => t.dueDate));
+    const sortedCompletedDates = [...completedDays].sort();
+    
+    let longest = 0;
+    let running = 0;
+    sortedCompletedDates.forEach((key, index) => {
+      if (index === 0) {
+        running = 1;
+      } else {
+        const prev = new Date(`${sortedCompletedDates[index - 1]}T00:00:00`);
+        const curr = new Date(`${key}T00:00:00`);
+        if (curr.getTime() - prev.getTime() === 86400000) {
+          running += 1;
+        } else {
+          running = 1;
+        }
+      }
+      longest = Math.max(longest, running);
+    });
+
+    let current = 0;
+    const now = new Date();
+    const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+    if (isCurrentMonth) {
+      const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (!completedDays.has(dayKey(cursor))) {
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      while (cursor.getMonth() === month && cursor.getFullYear() === year && completedDays.has(dayKey(cursor))) {
+        current += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+    }
     
     let min = new Date();
     let max = new Date();
@@ -53,9 +97,11 @@ export default function TaskHeatmap() {
       min = parseLocal(tasks[0].dueDate);
       max = parseLocal(tasks[0].dueDate);
       tasks.forEach(t => {
-        const d = parseLocal(t.dueDate);
-        if (d < min) min = new Date(d);
-        if (d > max) max = new Date(d);
+        if (t.dueDate) {
+          const d = parseLocal(t.dueDate);
+          if (d < min) min = new Date(d);
+          if (d > max) max = new Date(d);
+        }
       });
     }
     const today = new Date();
@@ -67,18 +113,18 @@ export default function TaskHeatmap() {
     
     return { 
       byDay: grouped, 
-      summary: { total, completed, incomplete, pending: total - completed - incomplete, rate: total ? Math.round((completed / total) * 100) : 0 },
-      streaks: calculateStreak(tasks),
+      summary: { total, completed, incomplete, pending, rate },
+      streaks: { current, longest },
       minMaxDates: { min, max }
     };
-  }, [tasks]);
+  }, [tasks, getPermanentTasksForDate, daysInMonth, year, month]);
 
   const selectedTasks = selectedDay ? (byDay[selectedDay] || []) : [];
   
   const intensity = (key) => {
     const dayTasks = byDay[key] || [];
     const amount = dayTasks.filter(t => t.completed).length;
-    const incomplete = dayTasks.filter(t => t.status === 'incomplete').length;
+    const incomplete = dayTasks.filter(t => t.status === 'incomplete' || t.isMissed).length;
     if (incomplete && !amount) return 'bg-rose-200 dark:bg-rose-900/60';
     if (!amount) return 'bg-slate-100 dark:bg-slate-800';
     if (amount === 1) return 'bg-emerald-200 dark:bg-emerald-900/60';
@@ -93,72 +139,62 @@ export default function TaskHeatmap() {
   const canGoPrev = prevMonth >= minMaxDates.min;
   const canGoNext = nextMonth <= minMaxDates.max;
 
-  const daysInMonth = useMemo(() => {
-    const year = viewMonth.getFullYear();
-    const month = viewMonth.getMonth();
-    const days = [];
-    const date = new Date(year, month, 1);
-    while (date.getMonth() === month) {
-      days.push(new Date(date));
-      date.setDate(date.getDate() + 1);
-    }
-    return days;
-  }, [viewMonth]);
-
   const firstDayOfWeek = daysInMonth[0].getDay();
   const lastDayOfWeek = daysInMonth[daysInMonth.length - 1].getDay();
   const emptyCellsBefore = Array.from({ length: firstDayOfWeek });
   const emptyCellsAfter = Array.from({ length: 6 - lastDayOfWeek });
 
   return (
-    <section className="card p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold">Task activity</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Your task completion activity by month.</p>
+    <section className="card flex flex-col justify-between p-3.5 sm:p-4 lg:p-4.5 h-full">
+      <div>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold">Task activity</h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Your task completion activity by month.</p>
+          </div>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+            {summary.rate}% completion rate
+          </span>
         </div>
-        <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-          {summary.rate}% completion rate
-        </span>
-      </div>
-      
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-        <Summary label="Total tasks" value={summary.total} />
-        <Summary label="Completed" value={summary.completed} color="text-emerald-600" />
-        <Summary label="Pending" value={summary.pending} color="text-amber-600" />
-        <Summary label="Incomplete" value={summary.incomplete} color="text-rose-600" />
-        <Summary label="Completion" value={`${summary.rate}%`} color="text-indigo-600" />
-        <Summary label="Current streak" value={`${streaks.current} d`} />
-        <Summary label="Best streak" value={`${streaks.longest} d`} />
+        
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          <Summary label="Total tasks" value={summary.total} />
+          <Summary label="Completed" value={summary.completed} color="text-emerald-600" />
+          <Summary label="Pending" value={summary.pending} color="text-amber-600" />
+          <Summary label="Incomplete" value={summary.incomplete} color="text-rose-600" />
+          <Summary label="Completion" value={`${summary.rate}%`} color="text-indigo-600" />
+          <Summary label="Current streak" value={`${streaks.current} d`} />
+          <Summary label="Best streak" value={`${streaks.longest} d`} />
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-col items-center">
-        <div className="mb-4 flex items-center justify-between w-full max-w-md px-2">
+      <div className="my-auto flex flex-col items-center py-2">
+        <div className="mb-2.5 flex items-center justify-between w-full max-w-sm px-2">
           <button 
             onClick={() => setViewMonth(prevMonth)} 
             disabled={!canGoPrev} 
-            className="rounded-full p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-slate-700 transition-colors font-bold text-xl w-10 h-10 flex items-center justify-center"
+            className="rounded-full p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-slate-700 transition-colors font-bold text-lg w-8 h-8 flex items-center justify-center"
             aria-label="Previous"
           >
             ←
           </button>
-          <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 min-w-[120px] text-center">
+          <h3 className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-200 min-w-[120px] text-center">
             {viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
           </h3>
           <button 
             onClick={() => setViewMonth(nextMonth)} 
             disabled={!canGoNext} 
-            className="rounded-full p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-slate-700 transition-colors font-bold text-xl w-10 h-10 flex items-center justify-center"
+            className="rounded-full p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-slate-700 transition-colors font-bold text-lg w-8 h-8 flex items-center justify-center"
             aria-label="Next"
           >
             →
           </button>
         </div>
 
-        <div className="w-full max-w-md overflow-visible">
-          <div key={viewMonth.toISOString()} className="grid grid-cols-7 gap-1 sm:gap-2 animate-fade-up">
+        <div className="w-full max-w-sm sm:max-w-md overflow-visible">
+          <div key={viewMonth.toISOString()} className="grid grid-cols-7 gap-1 sm:gap-1.5 animate-fade-up">
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-              <div key={i} className="text-center text-[10px] sm:text-xs font-semibold text-slate-400 mb-1">
+              <div key={i} className="text-center text-[10px] sm:text-xs font-semibold text-slate-400 mb-0.5">
                 {day}
               </div>
             ))}
@@ -171,8 +207,8 @@ export default function TaskHeatmap() {
               const key = dayKey(date);
               const dayTasks = byDay[key] || [];
               const completed = dayTasks.filter(t => t.completed).length;
-              const incomplete = dayTasks.filter(t => t.status === 'incomplete').length;
-              const pending = dayTasks.length - completed - incomplete;
+              const incomplete = dayTasks.filter(t => t.status === 'incomplete' || t.isMissed).length;
+              const pending = Math.max(0, dayTasks.length - completed - incomplete);
               const isToday = key === dayKey(new Date());
               
               return (
@@ -182,9 +218,9 @@ export default function TaskHeatmap() {
                   aria-label={`View tasks for ${prettyDate(key)}`} 
                   className={`group relative aspect-square w-full rounded-md transition duration-200 hover:scale-110 hover:ring-2 hover:ring-emerald-500/40 ${intensity(key)} ${isToday ? 'ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-800' : ''}`}
                 >
-                  <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-3 hidden w-48 -translate-x-1/2 rounded-xl bg-slate-950 px-3 py-2.5 text-left text-xs text-white shadow-xl group-hover:block whitespace-nowrap">
-                    <strong>{prettyDate(key)}</strong>
-                    <span className="mt-2 block text-slate-300">Total Tasks: {dayTasks.length}</span>
+                  <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden w-44 -translate-x-1/2 rounded-xl bg-slate-950 px-2.5 py-2 text-left text-[11px] text-white shadow-xl group-hover:block whitespace-nowrap">
+                    <strong className="block mb-1">{prettyDate(key)}</strong>
+                    <span className="block text-slate-300">Total Tasks: {dayTasks.length}</span>
                     <span className="block text-emerald-300">Completed: {completed}</span>
                     <span className="block text-amber-300">Pending: {pending}</span>
                     <span className="block text-rose-300">Incomplete: {incomplete}</span>
@@ -201,13 +237,13 @@ export default function TaskHeatmap() {
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-500">
+      <div className="mt-2 flex items-center justify-center gap-2 text-[11px] text-slate-500">
         <span>Less</span>
-        <span className="h-3.5 w-3.5 rounded-sm bg-slate-100 dark:bg-slate-800" />
-        <span className="h-3.5 w-3.5 rounded-sm bg-emerald-200 dark:bg-emerald-900/60" />
-        <span className="h-3.5 w-3.5 rounded-sm bg-emerald-400 dark:bg-emerald-700/80" />
-        <span className="h-3.5 w-3.5 rounded-sm bg-emerald-600 dark:bg-emerald-500" />
-        <span className="h-3.5 w-3.5 rounded-sm bg-emerald-800 dark:bg-emerald-400" />
+        <span className="h-3 w-3 rounded-sm bg-slate-100 dark:bg-slate-800" />
+        <span className="h-3 w-3 rounded-sm bg-emerald-200 dark:bg-emerald-900/60" />
+        <span className="h-3 w-3 rounded-sm bg-emerald-400 dark:bg-emerald-700/80" />
+        <span className="h-3 w-3 rounded-sm bg-emerald-600 dark:bg-emerald-500" />
+        <span className="h-3 w-3 rounded-sm bg-emerald-800 dark:bg-emerald-400" />
         <span>More</span>
       </div>
 
@@ -276,9 +312,9 @@ export default function TaskHeatmap() {
 
 function Summary({ label, value, color = 'text-slate-900 dark:text-white' }) {
   return (
-    <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-700/35">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${color}`}>{value}</p>
+    <div className="rounded-xl bg-slate-50 p-2 sm:p-2.5 dark:bg-slate-700/35">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500 truncate">{label}</p>
+      <p className={`mt-0.5 text-base sm:text-lg font-bold ${color}`}>{value}</p>
     </div>
   );
 }
